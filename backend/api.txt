@@ -1,2 +1,0 @@
-https://khl.api.webcaster.pro/api/khl_mobile/events_v2.json?page=43
-(матчи постранично, от самых дальних в будущем)
