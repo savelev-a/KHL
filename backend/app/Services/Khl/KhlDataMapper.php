@@ -126,4 +126,149 @@ class KhlDataMapper
 
         return $result;
     }
+
+    /**
+    * Преобразует ответ /events_v2.json в массив для upsert в matches.
+    *
+    * @param  array  $data       сырой ответ API
+    * @param  int    $seasonId   id сезона в нашей БД
+    * @param  array<int,int>  $teamIdByKhlId  карта [khl_id команды => team.id в БД]
+    * @return array<int, array>
+    */
+    public function mapSchedule(array $data, int $seasonId, array $teamIdByKhlId): array
+    {
+        if (!array_is_list($data)) {
+            throw KhlApiException::unexpectedStructure(
+                '/events_v2.json',
+                'expected top-level list'
+            );
+        }
+
+        $result  = [];
+        $skipped = 0;
+
+        foreach ($data as $index => $item) {
+            $event = $item['event'] ?? null;
+
+            if (!is_array($event)) {
+                $skipped++;
+                Log::channel('khl')->warning('mapSchedule: element has no "event" wrapper', [
+                    'index' => $index,
+                ]);
+                continue;
+            }
+
+            // 1) ID матча в КХЛ
+            $khlId = $event['khl_id'] ?? null;
+            if (!is_int($khlId)) {
+                $skipped++;
+                Log::channel('khl')->warning('mapSchedule: no integer khl_id', [
+                    'index' => $index,
+                ]);
+                continue;
+            }
+
+            // 2) Команды — ищем по khl_id, а не по внутреннему id
+            $homeKhlId = $event['team_a']['khl_id'] ?? null;
+            $awayKhlId = $event['team_b']['khl_id'] ?? null;
+
+            $homeTeamId = $homeKhlId !== null ? ($teamIdByKhlId[$homeKhlId] ?? null) : null;
+            $awayTeamId = $awayKhlId !== null ? ($teamIdByKhlId[$awayKhlId] ?? null) : null;
+
+            if ($homeTeamId === null || $awayTeamId === null) {
+                $skipped++;
+                Log::channel('khl')->warning('mapSchedule: unknown team(s) in event', [
+                    'khl_id'       => $khlId,
+                    'home_khl_id'  => $homeKhlId,
+                    'away_khl_id'  => $awayKhlId,
+                ]);
+                continue;
+            }
+
+            if ($homeTeamId === $awayTeamId) {
+                $skipped++;
+                Log::channel('khl')->warning('mapSchedule: same team on both sides', [
+                    'khl_id'    => $khlId,
+                    'team_id'   => $homeTeamId,
+                ]);
+                continue;
+            }
+
+            // 3) Дата старта. В API — unix в миллисекундах.
+            $startAt = $event['start_at'] ?? null;
+            if (!is_int($startAt) || $startAt <= 0) {
+                $skipped++;
+                Log::channel('khl')->warning('mapSchedule: invalid start_at', [
+                    'khl_id'   => $khlId,
+                    'start_at' => $startAt,
+                ]);
+                continue;
+            }
+
+            // 4) Статус
+            $statusKey = (string) ($event['game_state_key'] ?? 'not_yet_started');
+            $status    = $this->mapStatus($statusKey);
+
+            // 5) Счёт — только для завершённых и текущих матчей
+            $homeScore = null;
+            $awayScore = null;
+
+            if ($status !== 'scheduled') {
+                [$homeScore, $awayScore] = $this->parseScore($event['score'] ?? null, $khlId);
+            }
+
+            $result[] = [
+                'khl_id'       => $khlId,
+                'season_id'    => $seasonId,
+                'home_team_id' => $homeTeamId,
+                'away_team_id' => $awayTeamId,
+                'starts_at'    => Carbon::createFromTimestampMs($startAt)->utc(),
+                'home_score'   => $homeScore,
+                'away_score'   => $awayScore,
+                'status'       => $status,
+            ];
+        }
+
+        Log::channel('khl')->info('mapSchedule: mapped events', [
+            'total'   => count($data),
+            'mapped'  => count($result),
+            'skipped' => $skipped,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * "3:2" → [3, 2]. Если строку не распарсили — [null, null] + warning.
+     *
+     * @return array{0:?int, 1:?int}
+     */
+    private function parseScore(mixed $score, int $khlId): array
+    {
+        if (!is_string($score) || !preg_match('/^(\d+):(\d+)$/', trim($score), $m)) {
+            Log::channel('khl')->warning('mapSchedule: cannot parse score', [
+                'khl_id' => $khlId,
+                'score'  => $score,
+            ]);
+            return [null, null];
+        }
+
+        return [(int) $m[1], (int) $m[2]];
+    }
+
+    /**
+    * Маппинг строкового статуса из API в наш enum.
+    * Неизвестные статусы → 'scheduled' + warning в лог.
+    */
+    private function mapStatus(string $key): string
+    {
+        return match ($key) {
+            'not_yet_started'                => 'scheduled',
+            'finished', 'ended'              => 'finished',
+            'live', 'in_progress', 'online'  => 'live',
+            'postponed', 'canceled',
+            'cancelled'                      => 'postponed',
+            default                          => 'scheduled',
+        };
+    }
 }
