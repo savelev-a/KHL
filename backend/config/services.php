@@ -38,6 +38,8 @@ return [
         'base_url' => env('KHL_API_BASE_URL', 'https://khl.api.webcaster.pro/api/khl_mobile'),
         'timeout'  => (int) env('KHL_API_TIMEOUT', 15),
         'retries'  => (int) env('KHL_API_RETRIES', 3),
+        'playoff_spots'  => (int) env('KHL_PLAYOFF_SPOTS', 8),  // ← сколько мест от конференции
+        'ot_probability'   => (float) env('KHL_OT_PROBABILITY', 0.25),
     ],
 
 ];

@@ -13,6 +13,10 @@ class Team extends Model
         'city',
         'logo_url',
         'elo_rating',
+        'conference_key',
+        'division_key',
+        'conference_name',
+        'division_name',
     ];
 
     protected $casts = [

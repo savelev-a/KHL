@@ -115,6 +115,10 @@ class KhlDataMapper
                 'logo_url' => isset($team['image']) && $team['image'] !== ''
                     ? (string) $team['image']
                     : null,
+                'conference_key'  => $this->nullableString($team['conference_key'] ?? null),
+                'division_key'    => $this->nullableString($team['division_key'] ?? null),
+                'conference_name' => $this->nullableString($team['conference'] ?? null),
+                'division_name'   => $this->nullableString($team['division'] ?? null),
             ];
         }
 
@@ -217,6 +221,11 @@ class KhlDataMapper
                 [$homeScore, $awayScore] = $this->parseScore($event['score'] ?? null, $khlId);
             }
 
+            $outcome = null;
+            if ($status === 'finished' || $status === 'live') {
+                $outcome = $this->detectOutcome($event);
+            }
+
             $result[] = [
                 'khl_id'       => $khlId,
                 'season_id'    => $seasonId,
@@ -226,6 +235,7 @@ class KhlDataMapper
                 'home_score'   => $homeScore,
                 'away_score'   => $awayScore,
                 'status'       => $status,
+                'outcome'      => $outcome,
             ];
         }
 
@@ -270,5 +280,32 @@ class KhlDataMapper
             'cancelled'                      => 'postponed',
             default                          => 'scheduled',
         };
+    }
+
+    /**
+    * Определяем тип исхода матча по полю scores.
+    * Если ОТ или буллиты — соответствующий маркер; иначе regular.
+    */
+    private function detectOutcome(array $event): string
+    {
+        $scores = $event['scores'] ?? [];
+
+        // bullitt — это опечатка в API, именно так
+        if (!empty($scores['bullitt'])) {
+            return 'shootout';
+        }
+        if (!empty($scores['overtime'])) {
+            return 'overtime';
+        }
+        return 'regular';
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+        $value = trim($value);
+        return $value === '' ? null : $value;
     }
 }

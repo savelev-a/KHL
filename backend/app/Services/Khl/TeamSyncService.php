@@ -43,10 +43,13 @@ class TeamSyncService
 
                 if ($existing) {
                     $existing->fill([
-                        'name'     => $row['name'],
-                        'city'     => $row['city'],
-                        'logo_url' => $row['logo_url'],
-                        // elo_rating не трогаем — его пересчитывает khl:recalculate-elo
+                        'name'            => $row['name'],
+                        'city'            => $row['city'],
+                        'logo_url'        => $row['logo_url'],
+                        'conference_key'  => $row['conference_key'],
+                        'division_key'    => $row['division_key'],
+                        'conference_name' => $row['conference_name'],
+                        'division_name'   => $row['division_name'],
                     ])->save();
                     $updated++;
                 } else {
@@ -56,6 +59,10 @@ class TeamSyncService
                         'city'       => $row['city'],
                         'logo_url'   => $row['logo_url'],
                         'elo_rating' => 1500.00,
+                        'conference_key'  => $row['conference_key'],
+                        'division_key'    => $row['division_key'],
+                        'conference_name' => $row['conference_name'],
+                        'division_name'   => $row['division_name'],
                     ]);
                     $created++;
                 }

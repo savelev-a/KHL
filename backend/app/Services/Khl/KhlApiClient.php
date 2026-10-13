@@ -134,4 +134,59 @@ class KhlApiClient
 
         return count($data);
     }
+
+    /**
+    * Постраничная загрузка эндпоинта.
+    *
+    * @param  string  $path       относительный путь
+    * @param  array   $query      базовые query-параметры (без page)
+    * @param  int     $maxPages   предохранитель от бесконечного цикла
+    * @return array<int, mixed>   склеенные списки со всех страниц
+    */
+    public function getPaginated(string $path, array $query = [], int $maxPages = 100): array
+    {
+        $all = [];
+
+        for ($page = 1; $page <= $maxPages; $page++) {
+            $query['page'] = $page;
+
+            try {
+                $chunk = $this->get($path, $query);
+            } catch (KhlApiException $e) {
+                // Пустая страница иногда отдаёт 404 — это нормальный конец пагинации
+                if (str_contains($e->getMessage(), '[404]')) {
+                    Log::channel('khl')->info('Pagination: reached end (404)', [
+                        'path' => $path,
+                        'page' => $page,
+                    ]);
+                    break;
+                }
+                throw $e;
+            }
+
+            if (!is_array($chunk) || $chunk === []) {
+                Log::channel('khl')->info('Pagination: reached end (empty)', [
+                    'path' => $path,
+                    'page' => $page,
+                ]);
+                break;
+            }
+
+            $all = array_merge($all, $chunk);
+
+            Log::channel('khl')->info('Pagination: page fetched', [
+                'path' => $path,
+                'page' => $page,
+                'size' => count($chunk),
+            ]);
+
+            // Если пришло меньше "стандартной" страницы — считаем, что это была последняя.
+            // 16 — эмпирически observed размер одной страницы; если станет иначе — уберём.
+            if (count($chunk) < 16) {
+                break;
+            }
+        }
+
+        return $all;
+    }
 }

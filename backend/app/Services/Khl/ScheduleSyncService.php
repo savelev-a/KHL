@@ -42,7 +42,7 @@ class ScheduleSyncService
             );
         }
 
-        $raw      = $this->api->get('/events_v2.json', ['stage_id' => $season->khl_stage_id]);
+        $raw      = $this->api->getPaginated('/events_v2.json', ['stage_id' => $season->khl_stage_id]);
         $events   = $this->mapper->mapSchedule($raw, $season->id, $teamIdByKhlId);
 
         if ($events === []) {
