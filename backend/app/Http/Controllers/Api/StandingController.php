@@ -16,11 +16,11 @@ class StandingController extends Controller
 
         $standings = Standing::query()
             ->with('team')
-            ->where('season_id', $season->id)
             ->leftJoin('playoff_probabilities', function ($join) use ($season) {
                 $join->on('standings.team_id', '=', 'playoff_probabilities.team_id')
                      ->where('playoff_probabilities.season_id', '=', $season->id);
             })
+            ->where('standings.season_id', $season->id)
             ->orderBy('standings.position')
             ->select('standings.*', 'playoff_probabilities.probability as playoff_probability')
             ->get();
