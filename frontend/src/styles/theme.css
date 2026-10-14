@@ -1,0 +1,28 @@
+/* src/styles/theme.css
+   Заготовка тёмной темы поверх Bulma.
+   Bulma не имеет «тёмного режима из коробки», поэтому
+   переопределяем базовые переменные и фон body. */
+
+:root {
+  --khl-bg: #14161a;           /* основной фон */
+  --khl-surface: #1c1f26;      /* фон карточек/таблиц */
+  --khl-border: #2a2e37;       /* границы */
+  --khl-text: #e6e8ec;         /* основной текст */
+  --khl-text-muted: #9aa0aa;   /* вторичный текст */
+  --khl-accent: #4a9eff;       /* акцент (ссылки, активные элементы) */
+  --khl-green: #3ec46d;        /* высокий шанс */
+  --khl-yellow: #e0b400;       /* средний шанс */
+  --khl-red: #e0483e;          /* низкий шанс */
+}
+
+html, body {
+  background: var(--khl-bg);
+  color: var(--khl-text);
+}
+
+a {
+  color: var(--khl-accent);
+}
+a:hover {
+  color: #6fb4ff;
+}
