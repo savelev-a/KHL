@@ -15,6 +15,14 @@
   --khl-red: #e0483e;          /* низкий шанс */
 }
 
+/* Цвета индикации шанса плей-офф.
+   Будут использоваться в ProbabilityBar и в любых акцентных местах. */
+:root {
+  --khl-prob-high: var(--khl-green);   /* >= 0.80 */
+  --khl-prob-mid:  var(--khl-yellow);  /* 0.30–0.80 */
+  --khl-prob-low:  var(--khl-red);     /* < 0.30 */
+}
+
 html, body {
   background: var(--khl-bg);
   color: var(--khl-text);
