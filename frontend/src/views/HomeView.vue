@@ -1,17 +1,19 @@
 <!-- src/views/HomeView.vue -->
 <script setup>
-import { onMounted, computed } from 'vue'
-import { useStandingsStore } from '../stores/standings'
+import { computed } from 'vue'
 import ConferenceTable from '../components/ConferenceTable.vue'
 import { useLatestSimulation } from '../composables/useLatestSimulation'
+import { useStandings } from '../composables/useStandings'
 
-const store = useStandingsStore()
-const { data: latest, error: latestError, ageLabel } = useLatestSimulation()
+// useStandings сам делает первичную загрузку + polling каждые 5 минут.
+// onUnmounted внутри composable убивает таймер при уходе со страницы.
+const { store, backgroundLoading } = useStandings()
+
+const { data: latest, error: latestError, ageLabel, reload: reloadLatest } =
+  useLatestSimulation()
 
 const east = computed(() => store.east)
 const west = computed(() => store.west)
-
-onMounted(() => store.load())
 </script>
 
 <template>
@@ -20,6 +22,11 @@ onMounted(() => store.load())
       <h1 class="title is-4 has-text-light">Плей-офф: шансы команд</h1>
 
       <div class="head-meta">
+        <!-- Бейдж «обновляется…» появляется только на время фонового рефетча. -->
+        <span v-if="backgroundLoading" class="last-run last-run--busy">
+          обновляется…
+        </span>
+
         <span
           v-if="latest"
           class="last-run"
@@ -36,10 +43,13 @@ onMounted(() => store.load())
     <div v-if="store.loading && !store.items.length" class="has-text-grey-light">
       Загрузка…
     </div>
-    <div v-else-if="store.error" class="notification is-danger is-light">
+    <div v-else-if="store.error && !store.items.length" class="notification is-danger is-light">
       {{ store.error }}
     </div>
     <template v-else>
+      <div v-if="store.error" class="notification is-warning is-light">
+        Не удалось обновить данные: {{ store.error }}
+      </div>
       <ConferenceTable title="Конференция «Восток»" :rows="east" />
       <ConferenceTable title="Конференция «Запад»" :rows="west" />
     </template>
@@ -67,5 +77,8 @@ onMounted(() => store.load())
 }
 .last-run--error {
   color: var(--khl-red);
+}
+.last-run--busy {
+  color: var(--khl-accent);
 }
 </style>
