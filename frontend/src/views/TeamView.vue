@@ -14,6 +14,14 @@ const { team, loading, error } = useTeam(idRef)
 
 const eloHistory = computed(() => team.value?.elo_history ?? [])
 
+// team.standing.playoff_probability приходит с бэка (как в /standings).
+// Если расчёт Монте-Карло ещё не сделан — бэк отдаёт null,
+// поэтому умножать вслепую нельзя (иначе NaN).
+const playoffProbabilityText = computed(() => {
+  const p = team.value?.standing?.playoff_probability
+  return p === null || p === undefined ? '—' : (p * 100).toFixed(1) + '%'
+})
+
 // Небольшая утилита: «матчей» / «матч» / «матча» — но для наших чисел
 // всегда «матчей» (не бывает 1 матча в истории, минимум 1-2).
 // Пока хардкодим «матчей» — этого достаточно.
@@ -90,7 +98,7 @@ const eloHistory = computed(() => team.value?.elo_history ?? [])
         </div>
         <div class="stat">
           <div class="stat-value">
-            {{ (team.standing.playoff_probability * 100).toFixed(1) }}%
+            {{ playoffProbabilityText }}
           </div>
           <div class="stat-label">шанс плей-офф</div>
         </div>
