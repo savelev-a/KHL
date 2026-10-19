@@ -75,6 +75,10 @@ class ScheduleSyncService
                         'home_score'   => $row['home_score'] ?? $existing->home_score,
                         'away_score'   => $row['away_score'] ?? $existing->away_score,
                         'status'       => $row['status'],
+                        // Тип исхода (regular/overtime/shootout) тоже обновляем
+                        // только если API его отдал: у scheduled он null, и
+                        // затирать ранее записанное значение нельзя.
+                        'outcome'      => $row['outcome'] ?? $existing->outcome,
                     ])->save();
                     $updated++;
                 } else {
